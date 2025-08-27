@@ -1,0 +1,4 @@
+SOURCE = \
+ergunFoam.C \
+
+# sources
