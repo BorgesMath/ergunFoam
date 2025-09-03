@@ -31,21 +31,32 @@ ergunFoam.C
 
 **Continuidade (incompressível):**
 
-\[
-\nabla \cdot \mathbf{U} = 0
-\]
 
-**Momentum (forma resolvida no código — notação simplificada):**
+![Continuidade](DocsAuxiliares/CONTINUIDADE.svg)
 
-\[
-\frac{\partial \mathbf{U}}{\partial t} + \nabla\cdot(\mathbf{U}\mathbf{U}) - \nabla\cdot(\nu\nabla\mathbf{U}) + \alpha\,\mathbf{U} + \beta\,|\mathbf{U}|\,\mathbf{U} = -\nabla p
-\]
+**Momentum:**
 
-No código:
-- `alpha` corresponde ao termo linear (implícito) — `fvm::Sp(alpha, U)`.
-- `beta` multiplica `mag(Uprev)` para linearizar o termo quadrático (Ergun) — `fvm::Sp(beta * mag(Uprev), U)`.
+![Continuidade](DocsAuxiliares/Ergun.svg)
 
----
+
+![Coeficientes](DocsAuxiliares/Coeficientes.svg)
+
+
+## 🔹 Notação
+
+| Símbolo        | Significado                                                                 |
+|----------------|-----------------------------------------------------------------------------|
+| $\mathbf{U}$   | Vetor velocidade                                                            |
+| $p$            | Pressão cinemática ($p/\\rho$)                                              |
+| $\\nu$         | Viscosidade cinemática                                                      |
+| $\\alpha$      | Coeficiente linear de resistência (termo proporcional à velocidade)         |
+| $\\beta$       | Coeficiente do termo quadrático de Ergun (resistência proporcional a $|U|U$)|
+
+
+
+
+
+
 
 ## Arquivos importantes
 
@@ -64,100 +75,51 @@ No código:
 
 ## Como compilar
 
-1. Posicione-se na pasta do solver (a pasta que contém `Make` e `ergunFoam.C`).
-
 ```bash
 cd $FOAM_USER_APPBIN/..path../ergunFoam # ou para onde você tenha o repositório
-wmake
+wclean && wmake
 ```
 
-2. Se o `wmake` responder sem erros, o binário `ergunFoam` ficará disponível na sua árvore de compilação (ou em `$FOAM_USER_APPBIN` dependendo da organização dos seus caminhos).
+---
 
-> Dica: se usar `wmake -j N` a compilação pode usar N núcleos; caso tenha problemas com includes, verifique se as variáveis de ambiente do OpenFOAM estão carregadas (`source /opt/openfoam*/etc/bashrc` ou similar).
+## Como rodar (Alterações dem um case padrão )
+
+Adicione o arquivo **`porosityProperties`** dentro da pasta `constant` do case. Esse arquivo descreve a região porosa usada pelo solver (ex.: modelo de Ergun).
 
 ---
 
-## Como rodar (exemplo rápido)
+### Exemplo de arquivo (`case/constant/porosityProperties`)
+```text
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v2406                                 |
+|   \\  /    A nd           | Website:  www.openfoam.com                      |
+|    \/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      porosityProperties;
+}
 
-1. Prepare um case do OpenFOAM (estrutura típica: `0/`, `constant/`, `system/`).
-2. No `0/` defina pelo menos os campos `U` e `p` com BCs coerentes.
-3. No diretório `constant/` coloque propriedades físicas (cinemática `nu`) e as propriedades porosas (ou variables `alpha`, `beta`) que o `createFields.H` espera.
-4. Execute:
+// --------------------------------------------------------------- //
 
-```bash
-ergunFoam
-```
+porousRegion
+{
+    type              ergun;          // Modelo de porosidade (Ergun)
 
-5. Visualize resultados com `paraFoam` ou `foamToVTK`.
+    // Propriedades da região porosa:
+    epsilon           0.55;           // Porosidade (adimensional, 0 < epsilon < 1)
+    particleDiameter  1.12e-4;        // Diâmetro da partícula (m)
+}
 
----
+// ************************************************************************* //
 
-## Campos / Dicionários esperados
-
-O solver assume (pelo código apresentado) que os seguintes campos/variáveis existem ou são criados por `createFields.H`:
-
-- `U` — velocidade volumétrica (volVectorField)
-- `p` — pressão cinemática (volScalarField)
-- `nu` — viscosidade cinemática (scalard or volScalarField)
-- `phi` — fluxo de massa de faces (surfaceScalarField)
-- `alpha` — coeficiente linear de resistência (volScalarField)
-- `beta` — coeficiente do termo quadrático (volScalarField)
-- `Uprev` — campo auxiliar criado no código para linearização
-- `pRefCell`, `pRefValue` — referência para a equação de pressão
-
-> **Importante:** verifique o `createFields.H` do seu repositório para confirmar como `alpha` e `beta` são lidos (por ex. a partir de `constant/transportProperties` ou outro dicionário customizado).
-
----
-
-## Observações sobre implementação
-
-- O termo quadrático de Ergun é linearizado usando `mag(Uprev)` e, portanto, o campo `Uprev` é atualizado a cada iteração temporal; isto melhora a robustez da solução ao lidar com a não-linearidade do termo de resistência.
-- O solver utiliza o laço PISO com corretores não ortogonais e `rAU = 1/UEqn.A()` para montar a equação de pressão.
-- Certifique-se que as condições de contorno de pressão e velocidade são consistentes para evitar `divergence` ou erros de fluxo.
 
 ---
 
-## Testes e validação sugeridos
-
-- Caso simples: fluxo unidimensional por um meio poroso com condição de pressão fixas e comparativo com lei de Darcy/Ergun analítica.
-- Verifique conservação de massa (`checkMesh` + `continuityErrs.H` já incluído no loop do solver).
-- Varie `alpha` e `beta` para observar a transição entre regime linear (Darcy) e regime com efeitos Ergun.
-
----
-
-## Troubleshooting rápido
-
-- **Erro de compilação:** verifique includes e paths (variáveis de ambiente do OpenFOAM). Rode `wmake` na pasta correta.
-- **Divergência numérica:** reduza o `deltaT`, revise esquemas em `system/fvSchemes` e tolerâncias em `system/fvSolution`.
-- **Fluxo inconsistente:** cheque BCs em `0/` e as atualizações de `phi` (adjustPhi é chamado no código para manter consistência).
-
----
-
-## Licença
-
-O cabeçalho do fonte indica uso da **GNU General Public License (GPL)** — preserve o cabeçalho e os avisos de copyright ao redistribuir.
-
----
-
-## Contribuições
-
-1. Abra uma _issue_ descrevendo o caso de teste ou bug.
-2. Faça um fork do repositório, crie uma branch, faça suas modificações e envie um PR.
-
----
-
-## Autor
-
-- Matheus (repositório: `ergunFoam`) — código base: `ergunFoam.C`.
-
----
-
-## Referências / leitura adicional
-
-- Documentação do OpenFOAM (PISO, discretizações fv)
-- Artigos sobre a equação de Ergun e modelos de escoamento em meios porosos
-
----
-
-> Se quiser, eu transformo este README em `README.md` real no seu repositório, adiciono um `exampleCase/` mínimo, ou gero um `CMake`/workflow do GitHub Actions para compilar automaticamente com `wmake`. Quer que eu faça algum desses passos agora?
 
