@@ -1,16 +1,21 @@
 # ergunFoam
 
-> **Solver transient e compressível/poroso?**
->
-> *Implementação baseada em `ergunFoam.C` — solver transiente para escoamentos incompressíveis, laminares, de fluidos Newtonianos em meios porosos (termo de Ergun/Brinkman).*
+## Application
+`ergunFoam`
 
----
+## Group
+`grpIncompressible PorousMedia Solvers`
+
+**Baseado em:**
+- `icoFoam` — guia e referência do solver `icoFoam` (incompressible transient solver). Consulte a documentação oficial: https://www.openfoam.com/documentation/guides/latest/doc/guide-applications-solvers-incompressible-icoFoam.html
+
+## Description
 
 ## Visão geral
 
 `ergunFoam` é um solver transient (PISO) para resolver o escoamento incompressível e laminar através de meios porosos. O solver monta a equação de momento incluindo termos do tipo **Ergun** (termo linear em `U` e termo quadraticamente dependente de `|U|` linearizado), e resolve o acoplamento pressão/velocidade com o algoritmo PISO.
 
-Este repositório contém o código-fonte mínimo do solver:
+Este repositório contém os seguintes arquivos para o solver:
 
 ```
 Make
@@ -18,7 +23,7 @@ createFields.H
 ergunFoam.C
 ```
 
-> O `ergunFoam.C` contém a montagem das equações, o acoplamento PISO e a implementação dos termos de resistência (Ergun). O arquivo `createFields.H` deve conter a declaração/instanciação dos campos necessários (U, p, parâmetros porosos etc.).
+> O `ergunFoam.C` contém a montagem das equações, o acoplamento PISO e a implementação dos termos de resistência (Ergun). O arquivo `createFields.H` contem a declaração/instanciação dos campos necessários (U, p, parâmetros porosos etc.).
 
 ---
 
